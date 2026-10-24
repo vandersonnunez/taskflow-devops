@@ -1,0 +1,22 @@
+# Dependências do Node.js
+node_modules/
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Arquivos de log
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Arquivos gerados pela aplicação
+dist/
+coverage/
+
+# Arquivos temporários do sistema
+.DS_Store
+Thumbs.db
