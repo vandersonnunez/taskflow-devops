@@ -2,7 +2,10 @@ import { createApp } from './app.js';
 import { createPool } from './db.js';
 import { createTarefasRepository } from './repositories/tarefas.js';
 
-const port = Number.parseInt(process.env.API_PORT ?? '3000', 10);
+const port = Number.parseInt(
+  process.env.PORT ?? process.env.API_PORT ?? '3000',
+  10
+);
 const pool = createPool();
 const app = createApp({ repository: createTarefasRepository(pool) });
 const server = app.listen(port, () => {
