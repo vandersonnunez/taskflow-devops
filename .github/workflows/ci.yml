@@ -1,4 +1,5 @@
-name: TaskFlow CI
+
+name: TaskFlow CI/CD
 
 on:
   push:
@@ -42,3 +43,31 @@ jobs:
 
       - name: Construir imagem Docker
         run: docker build -t taskflow-api:ci .
+
+  deploy:
+    name: Publicar no Azure App Service
+    runs-on: ubuntu-latest
+    needs: build-test
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Autenticar no Azure com OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Implantar TaskFlow no Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: taskflow-vanderson-devops-2026
+          package: ./taskflow-api
