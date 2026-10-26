@@ -3,6 +3,17 @@ export function createTarefasRepository(pool) {
     throw new TypeError('createTarefasRepository requires a PostgreSQL pool');
   }
 
+  const colunasTarefa = `
+    id,
+    titulo,
+    descricao,
+    status,
+    prioridade,
+    data_vencimento,
+    criado_em,
+    atualizado_em
+  `;
+
   return {
     async verificarConexao() {
       await pool.query('SELECT 1');
@@ -10,7 +21,7 @@ export function createTarefasRepository(pool) {
 
     async listar() {
       const { rows } = await pool.query(`
-        SELECT id, titulo, descricao, criado_em, atualizado_em
+        SELECT ${colunasTarefa}
         FROM public.tarefas
         ORDER BY criado_em DESC, id DESC
       `);
@@ -20,7 +31,7 @@ export function createTarefasRepository(pool) {
 
     async buscarPorId(id) {
       const { rows } = await pool.query(`
-        SELECT id, titulo, descricao, criado_em, atualizado_em
+        SELECT ${colunasTarefa}
         FROM public.tarefas
         WHERE id = $1
       `, [id]);
@@ -28,25 +39,69 @@ export function createTarefasRepository(pool) {
       return rows[0] ?? null;
     },
 
-    async criar({ titulo, descricao }) {
+    async criar(input) {
+      const { titulo, descricao } = input;
+      const possuiNovosCampos = [
+        'status',
+        'prioridade',
+        'data_vencimento'
+      ].some((campo) => Object.hasOwn(input, campo));
+
+      if (!possuiNovosCampos) {
+        const { rows } = await pool.query(`
+          INSERT INTO public.tarefas (titulo, descricao)
+          VALUES ($1, $2)
+          RETURNING ${colunasTarefa}
+        `, [titulo, descricao]);
+
+        return rows[0];
+      }
+
+      const status = input.status ?? 'pendente';
+      const prioridade = input.prioridade ?? 'media';
+      const dataVencimento = Object.hasOwn(input, 'data_vencimento')
+        ? input.data_vencimento
+        : null;
+
       const { rows } = await pool.query(`
-        INSERT INTO public.tarefas (titulo, descricao)
-        VALUES ($1, $2)
-        RETURNING id, titulo, descricao, criado_em, atualizado_em
-      `, [titulo, descricao]);
+        INSERT INTO public.tarefas
+          (titulo, descricao, status, prioridade, data_vencimento)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING ${colunasTarefa}
+      `, [titulo, descricao, status, prioridade, dataVencimento]);
 
       return rows[0];
     },
 
-    async atualizar(id, { titulo, descricao }) {
+    async atualizar(id, input) {
+      const valores = [input.titulo, input.descricao];
+      const atualizacoes = [
+        'titulo = $1',
+        'descricao = $2'
+      ];
+
+      const camposPermitidos = [
+        'status',
+        'prioridade',
+        'data_vencimento'
+      ];
+
+      for (const campo of camposPermitidos) {
+        if (Object.hasOwn(input, campo)) {
+          valores.push(input[campo]);
+          atualizacoes.push(`${campo} = $${valores.length}`);
+        }
+      }
+
+      valores.push(id);
+
       const { rows } = await pool.query(`
         UPDATE public.tarefas
-        SET titulo = $1,
-            descricao = $2,
+        SET ${atualizacoes.join(',\n            ')},
             atualizado_em = CURRENT_TIMESTAMP
-        WHERE id = $3
-        RETURNING id, titulo, descricao, criado_em, atualizado_em
-      `, [titulo, descricao, id]);
+        WHERE id = $${valores.length}
+        RETURNING ${colunasTarefa}
+      `, valores);
 
       return rows[0] ?? null;
     },
@@ -58,6 +113,6 @@ export function createTarefasRepository(pool) {
       `, [id]);
 
       return rowCount > 0;
-    },
+    }
   };
 }

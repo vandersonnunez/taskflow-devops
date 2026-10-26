@@ -1,0 +1,44 @@
+name: TaskFlow CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build, testes e Docker
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: taskflow-api
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: taskflow-api/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Verificar o build
+        run: npm run build
+
+      - name: Executar testes automatizados
+        run: npm test
+
+      - name: Construir imagem Docker
+        run: docker build -t taskflow-api:ci .

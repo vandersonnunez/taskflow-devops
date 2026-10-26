@@ -7,6 +7,8 @@ RUN npm ci --omit=dev
 
 COPY --chown=node:node src ./src
 
+COPY --chown=node:node public ./public
+
 ENV NODE_ENV=production
 USER node
 
